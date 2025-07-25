@@ -61,7 +61,10 @@ Run:
 		}
 
 		if nextTick.Before(now) && !s.catchUpEnabled {
-			s.logger.Warnf("Next tick %s is in the past, skipping", nextTick.Format("2006-01-02 15:04:05"))
+			s.logger.Warnf(
+				"Next tick %s is in the past, skipping",
+				nextTick.Format("2006-01-02 15:04:05"),
+			)
 			lastTick = nextTick
 			continue
 		}
@@ -73,7 +76,10 @@ Run:
 				currentTick: nextTick,
 			}
 
-			s.logger.Infof("Dispatching tick at %s", nextTick.Format("2006-01-02 15:04:05"))
+			s.logger.Infof(
+				"Dispatching tick at %s",
+				nextTick.Format("2006-01-02 15:04:05"),
+			)
 			err := s.dispatcher.Enqueue(&tick)
 			if err != nil {
 				s.logger.Errorf("Error dispatching tick: %v", err)

@@ -63,7 +63,10 @@ func (w *Worker) Run(ctx context.Context) {
 		select {
 		case tick, ok := <-w.dispatcher.Dequeue():
 			if !ok {
-				w.logger.Infof("Worker for task '%s' stopped: dispatcher queue closed", w.task.Name())
+				w.logger.Infof(
+					"Worker for task '%s' stopped: dispatcher queue closed",
+					w.task.Name(),
+				)
 				w.wg.Wait()
 				return
 			}
@@ -85,7 +88,10 @@ func (w *Worker) Run(ctx context.Context) {
 						w.task.Execute(ctx, tick)
 					}()
 				} else {
-					w.logger.Warnf("Skipping execution of task '%s': already running", w.task.Name())
+					w.logger.Warnf(
+						"Skipping execution of task '%s': already running",
+						w.task.Name(),
+					)
 				}
 			}
 		case <-ctx.Done():
