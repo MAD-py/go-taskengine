@@ -1,18 +1,21 @@
 package main
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/MAD-py/go-taskengine/taskengine"
+	"github.com/MAD-py/go-taskengine/taskengine/store/postgresql"
 )
 
 func main() {
-	// store, err := filestore.New("./storage")
-	// if err != nil {
-	// 	panic(err)
-	// }
+	db, err := sql.Open("postgres", "")
+	if err != nil {
+		panic(err)
+	}
 
-	engine := taskengine.New()
+	store := postgresql.NewStore(db)
+	engine := taskengine.New(store)
 
 	task, err := taskengine.NewTask(
 		"example_task",
@@ -28,7 +31,8 @@ func main() {
 		panic(err)
 	}
 
-	trigger, err := taskengine.NewIntervalTrigger(30*time.Second, true)
+	// trigger, err := taskengine.NewIntervalTrigger(30*time.Second, true)
+	trigger, err := taskengine.NewCronTrigger("* * * * *")
 	if err != nil {
 		panic(err)
 	}
@@ -44,7 +48,7 @@ func main() {
 	engine.Run()
 
 	// engine.Start()
-	time.Sleep(1 * time.Minute)
+	time.Sleep(2 * time.Minute)
 	// engine.Shutdown()
 	// println("Engine shutdown complete")
 }

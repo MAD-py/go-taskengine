@@ -8,6 +8,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/MAD-py/go-taskengine/taskengine/store"
 )
 
 type Engine struct {
@@ -18,6 +20,7 @@ type Engine struct {
 
 	supervisors []*WorkerSupervisor
 
+	store  store.Store
 	logger Logger
 }
 
@@ -140,9 +143,10 @@ func (e *Engine) RemoveTask(name string) error {
 	return errors.New("task not found")
 }
 
-func New() *Engine {
+func New(store store.Store) *Engine {
 	return &Engine{
 		ctx:             context.Background(),
+		store:           store,
 		logger:          &stdLogger{},
 		supervisors:     make([]*WorkerSupervisor, 0),
 		shutdownTimeout: 30 * time.Second, // Default shutdown timeout
