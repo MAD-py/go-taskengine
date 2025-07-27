@@ -18,7 +18,7 @@ type Engine struct {
 	ctx             context.Context
 	shutdownTimeout time.Duration
 
-	supervisors []*WorkerSupervisor
+	supervisors map[string]*WorkerSupervisor
 
 	store  store.Store
 	logger Logger
@@ -113,7 +113,15 @@ func (e *Engine) RegisterTask(
 	catchUpEnabled bool,
 	maxExecutionLag int,
 ) {
-	e.logger.Infof("Registering task '%s' with policy '%s'", task.Name(), policy)
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if _, exists := e.supervisors[task.name]; exists {
+		e.logger.Warnf("Task '%s' is already registered", task.name)
+		return
+	}
+
+	e.logger.Infof("Registering task '%s' with policy '%s'", task.name, policy)
 
 	dispatcher := newDispatcher(maxExecutionLag)
 	worker := newWorker(task, dispatcher, policy, e.logger)
@@ -121,24 +129,22 @@ func (e *Engine) RegisterTask(
 
 	ws := newWorkerSupervisor(worker, scheduler, dispatcher, e.logger)
 
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	e.supervisors = append(e.supervisors, ws)
+	e.supervisors[task.name] = ws
 
-	e.logger.Infof("Task '%s' registered successfully", task.Name())
+	e.logger.Infof("Task '%s' registered successfully", task.name)
 }
 
 func (e *Engine) RemoveTask(name string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	for i, s := range e.supervisors {
-		if s.worker.task.name == name {
-			e.supervisors = append(e.supervisors[:i], e.supervisors[i+1:]...)
-			e.logger.Infof("Task '%s' removed successfully", name)
-			return nil
-		}
+	if supervisor, exists := e.supervisors[name]; exists {
+		supervisor.Shutdown()
+		delete(e.supervisors, name)
+		e.logger.Infof("Task '%s' removed successfully", name)
+		return nil
 	}
+
 	e.logger.Warnf("Task %s not found", name)
 	return errors.New("task not found")
 }
@@ -148,7 +154,6 @@ func New(store store.Store) *Engine {
 		ctx:             context.Background(),
 		store:           store,
 		logger:          &stdLogger{},
-		supervisors:     make([]*WorkerSupervisor, 0),
 		shutdownTimeout: 30 * time.Second, // Default shutdown timeout
 	}
 }
