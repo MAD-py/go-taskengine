@@ -3,14 +3,18 @@ package taskengine
 import (
 	"context"
 	"errors"
+	"reflect"
 	"time"
 )
 
 type Job = func(ctx *Context) error
 
 type Task struct {
+	name string
+
 	job     Job
-	name    string
+	jobName string
+
 	logger  Logger
 	timeout time.Duration
 }
@@ -64,6 +68,7 @@ func NewTask(name string, job Job, timeout time.Duration) (*Task, error) {
 		job:     job,
 		name:    name,
 		logger:  &stdLogger{},
+		jobName: reflect.TypeOf(job).Name(),
 		timeout: timeout,
 	}, nil
 }
