@@ -54,6 +54,9 @@ func (ts *taskStore) getID(ctx context.Context, name string) (int, error) {
 	var id int
 	err := ts.db.QueryRowContext(ctx, query, name).Scan(&id)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, store.ErrorTaskNotFound
+		}
 		return 0, err
 	}
 
@@ -76,7 +79,7 @@ func (ts *taskStore) get(ctx context.Context, name string) (*store.Task, error) 
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, nil
+			return nil, store.ErrorTaskNotFound
 		}
 		return nil, err
 	}
