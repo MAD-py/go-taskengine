@@ -14,10 +14,10 @@ type taskStore struct {
 func (ts *taskStore) createStore(ctx context.Context) error {
 	query := `
 		CREATE TABLE IF NOT EXISTS tasks (
-			id          INT        SERIAL PRIMARY KEY,
+			id          SERIAL     PRIMARY KEY,
 			name        TEXT       NOT NULL UNIQUE,
 			job         TEXT       NOT NULL,
-			trtigger    TEXT       NOT NULL,
+			trigger     TEXT       NOT NULL,
 			policy      TEXT       NOT NULL,
 			created_at  TIMESTAMP  NOT NULL DEFAULT NOW()
 		);

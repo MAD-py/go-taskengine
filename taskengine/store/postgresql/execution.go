@@ -13,7 +13,7 @@ type executionStore struct {
 func (es *executionStore) createStore(ctx context.Context) error {
 	query := `
 		CREATE TABLE IF NOT EXISTS task_executions (
-			id          INT        SERIAL PRIMARY KEY,
+			id          SERIAL     PRIMARY KEY,
 			task_id     INT        NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
 			iteration   INT        NOT NULL,
 			start_time  TIMESTAMP  NOT NULL,

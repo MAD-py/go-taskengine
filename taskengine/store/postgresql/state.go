@@ -14,7 +14,7 @@ type stateStore struct {
 func (ss *stateStore) createStore(ctx context.Context) error {
 	query := `
 		CREATE TABLE IF NOT EXISTS task_states (
-			task_id         INT        PRIMARY KEY REFERENCES tasks(id) ON DELETE CASCADE,
+			task_id         INT 	   PRIMARY KEY REFERENCES tasks(id) ON DELETE CASCADE,
 			iteration       INT        NOT NULL,
 			last_execution  TIMESTAMP  NOT NULL,
 			last_status     TEXT       NOT NULL,
