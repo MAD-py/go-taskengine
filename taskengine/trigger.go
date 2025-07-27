@@ -2,6 +2,7 @@ package taskengine
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/adhocore/gronx"
@@ -15,6 +16,14 @@ type intervalTrigger struct {
 	interval time.Duration
 
 	runOnStart bool
+}
+
+func (t *intervalTrigger) String() string {
+	return fmt.Sprintf(
+		"Interval(interval=%s, runOnStart=%v)",
+		t.interval,
+		t.runOnStart,
+	)
 }
 
 func (t *intervalTrigger) Next(lastRun time.Time) (time.Time, error) {
@@ -36,6 +45,10 @@ func NewIntervalTrigger(interval time.Duration, runOnStart bool) (Trigger, error
 
 type cronTrigger struct {
 	expr string
+}
+
+func (t *cronTrigger) String() string {
+	return fmt.Sprintf("Cron(expr=%s)", t.expr)
 }
 
 func (t *cronTrigger) Next(lastRun time.Time) (time.Time, error) {
