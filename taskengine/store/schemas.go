@@ -30,7 +30,7 @@ type Task struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-type TaskState struct {
+type State struct {
 	Name      string `json:"name"`
 	Iteration int    `json:"iteration"`
 
@@ -40,7 +40,7 @@ type TaskState struct {
 	LastErrorMsg string          `json:"last_error_msg,omitempty"`
 }
 
-type TaskExecution struct {
+type Execution struct {
 	Name      string `json:"name"`
 	Iteration int    `json:"iteration"`
 

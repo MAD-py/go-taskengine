@@ -41,7 +41,7 @@ func (es *executionStore) clearStore(ctx context.Context) error {
 }
 
 func (es *executionStore) save(
-	ctx context.Context, taskID int, execution *store.TaskExecution,
+	ctx context.Context, taskID int, execution *store.Execution,
 ) error {
 	query := `
 		INSERT INTO task_executions

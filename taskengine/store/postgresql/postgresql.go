@@ -102,7 +102,7 @@ func (ps *PostgresStore) SaveTask(
 }
 
 func (ps *PostgresStore) SaveState(
-	ctx context.Context, state *store.TaskState,
+	ctx context.Context, state *store.State,
 ) error {
 	taskID, err := ps.taskStore.getID(ctx, state.Name)
 	if err != nil {
@@ -113,7 +113,7 @@ func (ps *PostgresStore) SaveState(
 }
 
 func (ps *PostgresStore) SaveExecution(
-	ctx context.Context, execution *store.TaskExecution,
+	ctx context.Context, execution *store.Execution,
 ) error {
 	taskID, err := ps.taskStore.getID(ctx, execution.Name)
 	if err != nil {
@@ -131,7 +131,7 @@ func (ps *PostgresStore) GetTask(
 
 func (ps *PostgresStore) GetState(
 	ctx context.Context, name string,
-) (*store.TaskState, error) {
+) (*store.State, error) {
 	return ps.stateStore.get(ctx, name)
 }
 

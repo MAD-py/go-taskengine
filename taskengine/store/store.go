@@ -17,8 +17,8 @@ type StateStore interface {
 	DeleteStateStore(ctx context.Context) error
 	ClearStateStore(ctx context.Context) error
 
-	GetState(ctx context.Context, name string) (*TaskState, error)
-	SaveState(ctx context.Context, state *TaskState) error
+	GetState(ctx context.Context, name string) (*State, error)
+	SaveState(ctx context.Context, state *State) error
 	RemoveState(ctx context.Context, name string) error
 }
 
@@ -27,7 +27,7 @@ type ExecutionStore interface {
 	DeleteExecutionStore(ctx context.Context) error
 	ClearExecutionStore(ctx context.Context) error
 
-	SaveExecution(ctx context.Context, execution *TaskExecution) error
+	SaveExecution(ctx context.Context, execution *Execution) error
 }
 
 type Store interface {

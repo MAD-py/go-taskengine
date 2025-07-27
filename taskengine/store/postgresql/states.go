@@ -39,7 +39,7 @@ func (ss *stateStore) clearStore(ctx context.Context) error {
 }
 
 func (ss *stateStore) save(
-	ctx context.Context, taskID int, state *store.TaskState,
+	ctx context.Context, taskID int, state *store.State,
 ) error {
 	query := `
 		INSERT INTO task_states (task_id, iteration, last_execution, last_status, last_error_msg)
@@ -63,7 +63,7 @@ func (ss *stateStore) save(
 
 func (ss *stateStore) get(
 	ctx context.Context, name string,
-) (*store.TaskState, error) {
+) (*store.State, error) {
 	query := `
 		SELECT t.name, iteration, last_execution, last_status, last_error_msg
 		FROM task_states
@@ -71,7 +71,7 @@ func (ss *stateStore) get(
 		WHERE t.name = $1;
 	`
 
-	var state store.TaskState
+	var state store.State
 	err := ss.db.QueryRowContext(ctx, query, name).Scan(
 		&state.Name,
 		&state.Iteration,
