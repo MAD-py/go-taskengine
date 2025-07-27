@@ -16,6 +16,7 @@ func (ts *taskStore) createStore(ctx context.Context) error {
 		CREATE TABLE IF NOT EXISTS tasks (
 			id          INT        SERIAL PRIMARY KEY,
 			name        TEXT       NOT NULL UNIQUE,
+			job         TEXT       NOT NULL,
 			trtigger    TEXT       NOT NULL,
 			policy      TEXT       NOT NULL,
 			created_at  TIMESTAMP  NOT NULL DEFAULT NOW()
@@ -39,11 +40,11 @@ func (ts *taskStore) clearStore(ctx context.Context) error {
 
 func (ts *taskStore) save(ctx context.Context, task *store.Task) error {
 	query := `
-		INSERT INTO tasks (name, trigger, policy)
-		VALUES ($1, $2, $3)
+		INSERT INTO tasks (name, job, trigger, policy)
+		VALUES ($1, $2, $3, $4)
 	`
 	return ts.db.QueryRowContext(
-		ctx, query, task.Name, task.Trigger, task.Policy,
+		ctx, query, task.Name, task.Job, task.Trigger, task.Policy,
 	).Err()
 }
 
@@ -61,7 +62,7 @@ func (ts *taskStore) getID(ctx context.Context, name string) (int, error) {
 
 func (ts *taskStore) get(ctx context.Context, name string) (*store.Task, error) {
 	query := `
-		SELECT name, trigger, policy
+		SELECT name, job, trigger, policy
 		FROM tasks
 		WHERE name = $1;
 	`
@@ -69,6 +70,7 @@ func (ts *taskStore) get(ctx context.Context, name string) (*store.Task, error) 
 	var task store.Task
 	err := ts.db.QueryRowContext(ctx, query, name).Scan(
 		&task.Name,
+		&task.Job,
 		&task.Trigger,
 		&task.Policy,
 	)

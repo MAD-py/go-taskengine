@@ -25,6 +25,7 @@ const (
 
 type Task struct {
 	Name      string    `json:"name"`
+	Job       string    `json:"job"`
 	Trigger   string    `json:"trigger"`
 	Policy    string    `json:"policy"`
 	CreatedAt time.Time `json:"created_at"`
