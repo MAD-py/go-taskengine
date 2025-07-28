@@ -45,17 +45,17 @@ func (ts TaskStatus) String() string {
 }
 
 type Task struct {
-	Name      string     `json:"name"`
-	Job       string     `json:"job"`
-	Status    TaskStatus `json:"status"`
-	Trigger   string     `json:"trigger"`
-	Policy    string     `json:"policy"`
-	CreatedAt time.Time  `json:"created_at"`
+	Name      string    `json:"name"`
+	Job       string    `json:"job"`
+	Trigger   string    `json:"trigger"`
+	Policy    string    `json:"policy"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type State struct {
-	Name      string `json:"name"`
-	Iteration int    `json:"iteration"`
+	Name      string     `json:"name"`
+	Status    TaskStatus `json:"status"`
+	Iteration int        `json:"iteration"`
 
 	LastExecution time.Time `json:"last_execution"`
 

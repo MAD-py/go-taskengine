@@ -15,6 +15,7 @@ func (ss *stateStore) createStore(ctx context.Context) error {
 	query := `
 		CREATE TABLE IF NOT EXISTS task_states (
 			task_id         INT 	   PRIMARY KEY REFERENCES tasks(id) ON DELETE CASCADE,
+			status		    TEXT       NOT NULL,
 			iteration       INT        NOT NULL,
 			last_execution  TIMESTAMP  NOT NULL,
 			last_status     TEXT       NOT NULL,
@@ -42,17 +43,21 @@ func (ss *stateStore) save(
 	ctx context.Context, taskID int, state *store.State,
 ) error {
 	query := `
-		INSERT INTO task_states (task_id, iteration, last_execution, last_status, last_error_msg)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO task_states (task_id, status, iteration, last_execution, last_status, last_error_msg)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (task_id) DO UPDATE SET
+			status = EXCLUDED.status,
 			iteration = EXCLUDED.iteration,
 			last_execution = EXCLUDED.last_execution,
 			last_status = EXCLUDED.last_status,
 			last_error_msg = EXCLUDED.last_error_msg;
 	`
 
-	_, err := ss.db.ExecContext(ctx, query,
+	_, err := ss.db.ExecContext(
+		ctx,
+		query,
 		taskID,
+		state.Status.String(),
 		state.Iteration,
 		state.LastExecution,
 		state.LastStatus.String(),
@@ -65,7 +70,7 @@ func (ss *stateStore) get(
 	ctx context.Context, name string,
 ) (*store.State, error) {
 	query := `
-		SELECT t.name, iteration, last_execution, last_status, last_error_msg
+		SELECT t.name, status, iteration, last_execution, last_status, last_error_msg
 		FROM task_states
 		JOIN tasks t ON task_states.task_id = tasks.id 
 		WHERE t.name = $1;
@@ -74,6 +79,7 @@ func (ss *stateStore) get(
 	var state store.State
 	err := ss.db.QueryRowContext(ctx, query, name).Scan(
 		&state.Name,
+		&state.Status,
 		&state.Iteration,
 		&state.LastExecution,
 		&state.LastStatus,
