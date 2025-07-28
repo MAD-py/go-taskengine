@@ -40,11 +40,12 @@ func (ts *taskStore) clearStore(ctx context.Context) error {
 
 func (ts *taskStore) save(ctx context.Context, task *store.Task) error {
 	query := `
-		INSERT INTO tasks (name, job, trigger, policy)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO tasks (name, job, status, trigger, policy)
+		VALUES ($1, $2, $3, $4, $5)
 	`
 	return ts.db.QueryRowContext(
-		ctx, query, task.Name, task.Job, task.Trigger, task.Policy,
+		ctx, query, task.Name, task.Job,
+		task.Status, task.Trigger, task.Policy,
 	).Err()
 }
 
@@ -65,7 +66,7 @@ func (ts *taskStore) getID(ctx context.Context, name string) (int, error) {
 
 func (ts *taskStore) get(ctx context.Context, name string) (*store.Task, error) {
 	query := `
-		SELECT name, job, trigger, policy
+		SELECT name, job, status, trigger, policy
 		FROM tasks
 		WHERE name = $1;
 	`
@@ -74,6 +75,7 @@ func (ts *taskStore) get(ctx context.Context, name string) (*store.Task, error) 
 	err := ts.db.QueryRowContext(ctx, query, name).Scan(
 		&task.Name,
 		&task.Job,
+		&task.Status,
 		&task.Trigger,
 		&task.Policy,
 	)

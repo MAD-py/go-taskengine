@@ -4,6 +4,12 @@ import "time"
 
 type ExecutionStatus int
 
+const (
+	ExecutionStatusFailed ExecutionStatus = iota
+	ExecutionStatusSuccess
+	ExecutionStatusSkipped
+)
+
 func (es ExecutionStatus) String() string {
 	switch es {
 	case ExecutionStatusFailed:
@@ -17,18 +23,34 @@ func (es ExecutionStatus) String() string {
 	}
 }
 
+type TaskStatus int
+
 const (
-	ExecutionStatusFailed ExecutionStatus = iota
-	ExecutionStatusSuccess
-	ExecutionStatusSkipped
+	TaskStatusIdle TaskStatus = iota
+	TaskStatusRegistered
+	TaskStatusRunning
 )
 
+func (ts TaskStatus) String() string {
+	switch ts {
+	case TaskStatusIdle:
+		return "idle"
+	case TaskStatusRegistered:
+		return "registered"
+	case TaskStatusRunning:
+		return "running"
+	default:
+		return "unknown"
+	}
+}
+
 type Task struct {
-	Name      string    `json:"name"`
-	Job       string    `json:"job"`
-	Trigger   string    `json:"trigger"`
-	Policy    string    `json:"policy"`
-	CreatedAt time.Time `json:"created_at"`
+	Name      string     `json:"name"`
+	Job       string     `json:"job"`
+	Status    TaskStatus `json:"status"`
+	Trigger   string     `json:"trigger"`
+	Policy    string     `json:"policy"`
+	CreatedAt time.Time  `json:"created_at"`
 }
 
 type State struct {
