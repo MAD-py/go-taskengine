@@ -2,7 +2,6 @@ package postgresql
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/MAD-py/go-taskengine/taskengine/store"
 )
@@ -19,6 +18,8 @@ func (ts *taskStore) createStore(ctx context.Context) error {
 			job         TEXT       NOT NULL,
 			trigger     TEXT       NOT NULL,
 			policy      TEXT       NOT NULL,
+			status		TEXT       NOT NULL DEFAULT 'idle',
+			iteration   INT        NOT NULL DEFAULT 0,
 			created_at  TIMESTAMP  NOT NULL DEFAULT NOW()
 		);
 	`
@@ -38,59 +39,72 @@ func (ts *taskStore) clearStore(ctx context.Context) error {
 	return err
 }
 
-func (ts *taskStore) save(ctx context.Context, task *store.Task) error {
+func (ts *taskStore) exists(ctx context.Context, name string) (bool, error) {
+	query := "SELECT EXISTS(SELECT 1 FROM tasks WHERE name = $1);"
+	var exists bool
+	err := ts.db.QueryRowContext(ctx, query, name).Scan(&exists)
+	return exists, err
+}
+
+func (ts *taskStore) save(
+	ctx context.Context, name string, settings *store.TaskSettings,
+) error {
 	query := `
 		INSERT INTO tasks (name, job, trigger, policy)
 		VALUES ($1, $2, $3, $4)
+		RETURNING id;
 	`
 	return ts.db.QueryRowContext(
-		ctx, query, task.Name, task.Job, task.Trigger, task.Policy,
+		ctx, query, name,
+		settings.Job,
+		settings.Trigger,
+		settings.Policy,
 	).Err()
 }
 
-func (ts *taskStore) getID(ctx context.Context, name string) (int, error) {
-	query := "SELECT id FROM tasks WHERE name = $1;"
-
-	var id int
-	err := ts.db.QueryRowContext(ctx, query, name).Scan(&id)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return 0, store.ErrorTaskNotFound
-		}
-		return 0, err
-	}
-
-	return id, nil
-}
-
-func (ts *taskStore) get(ctx context.Context, name string) (*store.Task, error) {
+func (ts *taskStore) getSettings(
+	ctx context.Context, name string,
+) (*store.TaskSettings, error) {
 	query := `
-		SELECT name, job, trigger, policy
+		SELECT job, trigger, policy
 		FROM tasks
 		WHERE name = $1;
 	`
 
-	var task store.Task
-	err := ts.db.QueryRowContext(ctx, query, name).Scan(
-		&task.Name,
-		&task.Job,
-		&task.Trigger,
-		&task.Policy,
-	)
+	var settings store.TaskSettings
+	err := ts.db.
+		QueryRowContext(ctx, query, name).
+		Scan(&settings.Job, &settings.Trigger, &settings.Policy)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, store.ErrorTaskNotFound
-		}
 		return nil, err
 	}
-
-	return &task, nil
+	return &settings, nil
 }
 
-func (ts *taskStore) remove(ctx context.Context, name string) error {
-	query := "DELETE FROM tasks WHERE name = $1;"
-	_, err := ts.db.ExecContext(ctx, query, name)
+func (ts *taskStore) updateStatus(
+	ctx context.Context, name string, status store.TaskStatus,
+) error {
+	query := "UPDATE tasks SET status = $2 WHERE name = $1;"
+	_, err := ts.db.ExecContext(ctx, query, name, status)
 	return err
+}
+
+func (ts *taskStore) increaseIteration(
+	ctx context.Context, name string,
+) (int, int, error) {
+	query := `
+		UPDATE tasks
+		SET iteration = iteration + 1
+		WHERE name = $1
+		RETURNING id, iteration;
+	`
+	var id int
+	var iteration int
+	err := ts.db.QueryRowContext(ctx, query, name).Scan(&id, &iteration)
+	if err != nil {
+		return 0, 0, err
+	}
+	return id, iteration, nil
 }
 
 func newTaskStore(db DB) *taskStore {

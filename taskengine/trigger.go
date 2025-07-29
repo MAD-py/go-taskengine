@@ -10,6 +10,7 @@ import (
 
 type Trigger interface {
 	Next(lastRun time.Time) (time.Time, error)
+	String() string
 }
 
 type intervalTrigger struct {

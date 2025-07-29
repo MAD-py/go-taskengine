@@ -4,29 +4,37 @@ import (
 	"database/sql"
 	"time"
 
+	_ "github.com/lib/pq" // PostgreSQL driver
+
 	"github.com/MAD-py/go-taskengine/taskengine"
 	"github.com/MAD-py/go-taskengine/taskengine/store/postgresql"
 )
 
+func Test(ctx *taskengine.Context) error {
+	ctx.Logger().Info("Hi, I'm an example task running every 10 seconds!")
+	time.Sleep(30 * time.Second)
+	return nil
+}
+
 func main() {
-	db, err := sql.Open("postgres", "")
+	db, err := sql.Open(
+		"postgres",
+		"postgres://user:password@localhost:5432/taskengine?sslmode=disable",
+	)
 	if err != nil {
 		panic(err)
 	}
 
 	store := postgresql.NewStore(db)
-	engine := taskengine.New(store)
 
-	task, err := taskengine.NewTask(
-		"example_task",
-		func(ctx *taskengine.Context) error {
-			ctx.Logger().Info("Hi, I'm an example task running every 10 seconds!")
-			time.Sleep(30 * time.Second)
-			return nil
-		},
-		5*time.Second,
-	)
+	// store.DeleteStores(context.Background())
 
+	engine, err := taskengine.New(store)
+	if err != nil {
+		panic(err)
+	}
+
+	task, err := taskengine.NewTask("example_task", Test, 5*time.Second)
 	if err != nil {
 		panic(err)
 	}
@@ -37,18 +45,22 @@ func main() {
 		panic(err)
 	}
 
-	engine.RegisterTask(
+	err = engine.RegisterTask(
 		task,
-		taskengine.WorkerPolicyParallel,
+		taskengine.WorkerPolicySerial,
 		trigger,
 		true,
 		20,
 	)
 
+	if err != nil {
+		panic(err)
+	}
+
 	engine.Run()
 
 	// engine.Start()
-	time.Sleep(2 * time.Minute)
+	// time.Sleep(2 * time.Minute)
 	// engine.Shutdown()
 	// println("Engine shutdown complete")
 }

@@ -12,14 +12,14 @@ type executionStore struct {
 
 func (es *executionStore) createStore(ctx context.Context) error {
 	query := `
-		CREATE TABLE IF NOT EXISTS task_executions (
+		CREATE TABLE IF NOT EXISTS executions (
 			id          SERIAL     PRIMARY KEY,
 			task_id     INT        NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
 			iteration   INT        NOT NULL,
 			start_time  TIMESTAMP  NOT NULL,
 			end_time    TIMESTAMP  NOT NULL,
 			duration    BIGINT     NOT NULL,
-			status      INT        NOT NULL,
+			status      TEXT       NOT NULL,
 			error_msg   TEXT
 		);
 	`
@@ -29,34 +29,38 @@ func (es *executionStore) createStore(ctx context.Context) error {
 }
 
 func (es *executionStore) deleteStore(ctx context.Context) error {
-	_, err := es.db.ExecContext(ctx, "DROP TABLE IF EXISTS task_executions;")
+	query := "DROP TABLE IF EXISTS executions;"
+	_, err := es.db.ExecContext(ctx, query)
 	return err
 }
 
 func (es *executionStore) clearStore(ctx context.Context) error {
-	_, err := es.db.ExecContext(
-		ctx, "TRUNCATE TABLE task_executions RESTART IDENTITY;",
-	)
+	query := "TRUNCATE TABLE executions RESTART IDENTITY;"
+	_, err := es.db.ExecContext(ctx, query)
 	return err
 }
 
 func (es *executionStore) save(
-	ctx context.Context, taskID int, execution *store.Execution,
+	ctx context.Context, execution *store.Execution,
 ) error {
 	query := `
-		INSERT INTO task_executions
-		(task_id, iteration, start_time, end_time, duration, status, error_msg)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO executions (task_id, iteration, start_time, end_time, duration, status, error_msg)
+		VALUES ($1, $2, $3, $4, $5, $6, $7);
 	`
 
+	var errorMsg any
+	if execution.ErrorMsg != "" {
+		errorMsg = execution.ErrorMsg
+	}
+
 	_, err := es.db.ExecContext(ctx, query,
-		taskID,
+		execution.TaskID,
 		execution.Iteration,
 		execution.StartTime,
 		execution.EndTime,
 		execution.Duration.Milliseconds(),
-		execution.Status.String(),
-		execution.ErrorMsg,
+		execution.Status,
+		errorMsg,
 	)
 	return err
 }

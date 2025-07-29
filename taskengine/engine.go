@@ -112,16 +112,36 @@ func (e *Engine) RegisterTask(
 	trigger Trigger,
 	catchUpEnabled bool,
 	maxExecutionLag int,
-) {
+) error {
 	e.mu.Lock()
-	defer e.mu.Unlock()
-
 	if _, exists := e.supervisors[task.name]; exists {
 		e.logger.Warnf("Task '%s' is already registered", task.name)
-		return
+		return nil
 	}
+	e.mu.Unlock()
 
 	e.logger.Infof("Registering task '%s' with policy '%s'", task.name, policy)
+
+	exists, err := e.store.TaskExists(e.ctx, task.name)
+	if err != nil {
+		return err
+	}
+
+	if exists {
+		err := e.validateTaskSettings(task.name, task.jobName, policy, trigger)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := e.store.SaveTask(e.ctx, task.name, &store.TaskSettings{
+			Job:     task.jobName,
+			Policy:  policy.String(),
+			Trigger: trigger.String(),
+		})
+		if err != nil {
+			return err
+		}
+	}
 
 	dispatcher := newDispatcher(maxExecutionLag)
 	worker := newWorker(task, dispatcher, policy, e.logger)
@@ -129,9 +149,44 @@ func (e *Engine) RegisterTask(
 
 	ws := newWorkerSupervisor(worker, scheduler, dispatcher, e.logger)
 
+	e.mu.Lock()
 	e.supervisors[task.name] = ws
+	e.mu.Unlock()
+
+	err = e.store.UpdateTaskStatus(e.ctx, task.name, store.TaskStatusRegistered)
+	if err != nil {
+		e.mu.Lock()
+		delete(e.supervisors, task.name)
+		e.mu.Unlock()
+		return err
+	}
 
 	e.logger.Infof("Task '%s' registered successfully", task.name)
+
+	return nil
+}
+
+func (e *Engine) validateTaskSettings(
+	taskName, jobName string, policy workerPolicy, trigger Trigger,
+) error {
+	taskSettings, err := e.store.GetTaskSettings(e.ctx, taskName)
+	if err != nil {
+		return err
+	}
+
+	if taskSettings.Job != jobName {
+		return ErrorJobNameMismatch
+	}
+
+	if taskSettings.Policy != policy.String() {
+		return ErrorPolicyMismatch
+	}
+
+	if taskSettings.Trigger != trigger.String() {
+		return ErrorTriggerMismatch
+	}
+
+	return nil
 }
 
 func (e *Engine) RemoveTask(name string) error {
@@ -149,11 +204,17 @@ func (e *Engine) RemoveTask(name string) error {
 	return errors.New("task not found")
 }
 
-func New(store store.Store) *Engine {
+func New(store store.Store) (*Engine, error) {
+	ctx := context.Background()
+	if err := store.CreateStores(ctx); err != nil {
+		return nil, err
+	}
+
 	return &Engine{
-		ctx:             context.Background(),
+		ctx:             ctx,
 		store:           store,
 		logger:          &stdLogger{},
+		supervisors:     make(map[string]*WorkerSupervisor),
 		shutdownTimeout: 30 * time.Second, // Default shutdown timeout
-	}
+	}, nil
 }

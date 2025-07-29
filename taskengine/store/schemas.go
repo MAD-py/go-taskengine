@@ -2,75 +2,39 @@ package store
 
 import "time"
 
-type ExecutionStatus int
+type TaskStatus string
 
 const (
-	ExecutionStatusFailed ExecutionStatus = iota
-	ExecutionStatusSuccess
-	ExecutionStatusSkipped
+	TaskStatusIdle       TaskStatus = "idle"
+	TaskStatusRunning    TaskStatus = "running"
+	TaskStatusRegistered TaskStatus = "registered"
 )
 
-func (es ExecutionStatus) String() string {
-	switch es {
-	case ExecutionStatusFailed:
-		return "failed"
-	case ExecutionStatusSuccess:
-		return "success"
-	case ExecutionStatusSkipped:
-		return "skipped"
-	default:
-		return "unknown"
-	}
-}
-
-type TaskStatus int
+type ExecutionStatus string
 
 const (
-	TaskStatusIdle TaskStatus = iota
-	TaskStatusRegistered
-	TaskStatusRunning
+	ExecutionStatusFailed  ExecutionStatus = "failed"
+	ExecutionStatusSuccess ExecutionStatus = "success"
+	ExecutionStatusSkipped ExecutionStatus = "skipped"
 )
 
-func (ts TaskStatus) String() string {
-	switch ts {
-	case TaskStatusIdle:
-		return "idle"
-	case TaskStatusRegistered:
-		return "registered"
-	case TaskStatusRunning:
-		return "running"
-	default:
-		return "unknown"
-	}
+type TaskSettings struct {
+	Job     string `json:"job"`
+	Policy  string `json:"policy"`
+	Trigger string `json:"trigger"`
 }
 
-type Task struct {
-	Name      string    `json:"name"`
-	Job       string    `json:"job"`
-	Trigger   string    `json:"trigger"`
-	Policy    string    `json:"policy"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-type State struct {
-	Name      string     `json:"name"`
-	Status    TaskStatus `json:"status"`
-	Iteration int        `json:"iteration"`
-
-	LastExecution time.Time `json:"last_execution"`
-
-	LastStatus   ExecutionStatus `json:"last_status"`
-	LastErrorMsg string          `json:"last_error_msg,omitempty"`
+type ExecutionInfo struct {
+	StartTime time.Time       `json:"start_time"`
+	EndTime   time.Time       `json:"end_time"`
+	Duration  time.Duration   `json:"duration"`
+	Status    ExecutionStatus `json:"status"`
+	ErrorMsg  string          `json:"error_msg,omitempty"`
 }
 
 type Execution struct {
-	Name      string `json:"name"`
-	Iteration int    `json:"iteration"`
+	*ExecutionInfo
 
-	StartTime time.Time     `json:"start_time"`
-	EndTime   time.Time     `json:"end_time"`
-	Duration  time.Duration `json:"duration"`
-
-	Status   ExecutionStatus `json:"status"`
-	ErrorMsg string          `json:"error_msg,omitempty"`
+	TaskID    int `json:"task_id"`
+	Iteration int `json:"iteration"`
 }

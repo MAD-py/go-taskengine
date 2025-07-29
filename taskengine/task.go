@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"runtime"
 	"time"
 )
 
@@ -64,11 +65,14 @@ func NewTask(name string, job Job, timeout time.Duration) (*Task, error) {
 		return nil, errors.New("job must be non-nil")
 	}
 
+	jobPtr := reflect.ValueOf(job).Pointer()
+	jobName := runtime.FuncForPC(jobPtr).Name()
+
 	return &Task{
 		job:     job,
 		name:    name,
 		logger:  &stdLogger{},
-		jobName: reflect.TypeOf(job).Name(),
+		jobName: jobName,
 		timeout: timeout,
 	}, nil
 }
