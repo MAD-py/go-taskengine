@@ -96,6 +96,15 @@ func (e *Engine) StartTask(name string) error {
 
 	for _, s := range e.supervisors {
 		if s.worker.task.name == name {
+			err := e.store.UpdateTaskStatus(
+				e.ctx, s.worker.task.name, store.TaskStatusRunning,
+			)
+			if err != nil {
+				e.logger.Errorf(
+					"Failed run task '%s': %v", s.worker.task.name, err,
+				)
+				continue
+			}
 			s.Start(e.ctx)
 			return nil
 		}
@@ -186,14 +195,6 @@ func (e *Engine) RegisterTask(
 	e.mu.Lock()
 	e.supervisors[task.name] = ws
 	e.mu.Unlock()
-
-	err = e.store.UpdateTaskStatus(e.ctx, task.name, store.TaskStatusRegistered)
-	if err != nil {
-		e.mu.Lock()
-		delete(e.supervisors, task.name)
-		e.mu.Unlock()
-		return err
-	}
 
 	e.logger.Infof("Task '%s' registered successfully", task.name)
 

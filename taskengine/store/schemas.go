@@ -5,9 +5,8 @@ import "time"
 type TaskStatus string
 
 const (
-	TaskStatusIdle       TaskStatus = "idle"
-	TaskStatusRunning    TaskStatus = "running"
-	TaskStatusRegistered TaskStatus = "registered"
+	TaskStatusIdle    TaskStatus = "idle"
+	TaskStatusRunning TaskStatus = "running"
 )
 
 type ExecutionStatus string
