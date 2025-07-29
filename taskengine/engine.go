@@ -196,6 +196,12 @@ func (e *Engine) RemoveTask(name string) error {
 	if supervisor, exists := e.supervisors[name]; exists {
 		supervisor.Shutdown()
 		delete(e.supervisors, name)
+
+		err := e.store.UpdateTaskStatus(e.ctx, name, store.TaskStatusIdle)
+		if err != nil {
+			return err
+		}
+
 		e.logger.Infof("Task '%s' removed successfully", name)
 		return nil
 	}
