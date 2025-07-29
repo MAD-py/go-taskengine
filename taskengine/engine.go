@@ -25,7 +25,6 @@ type Engine struct {
 }
 
 func (e *Engine) Run() error {
-
 	ctxSignal, cancelSignal := signal.NotifyContext(e.ctx, os.Interrupt, syscall.SIGTERM)
 	defer cancelSignal()
 
@@ -40,6 +39,15 @@ func (e *Engine) Start() {
 
 	e.logger.Info("Starting Task Engine...")
 	for _, s := range e.supervisors {
+		err := e.store.UpdateTaskStatus(
+			e.ctx, s.worker.task.name, store.TaskStatusRunning,
+		)
+		if err != nil {
+			e.logger.Errorf(
+				"Failed run task '%s': %v", s.worker.task.name, err,
+			)
+			continue
+		}
 		s.Start(e.ctx)
 	}
 	e.logger.Infof("Task Engine started with %d supervisors", len(e.supervisors))
@@ -53,7 +61,20 @@ func (e *Engine) Shutdown() error {
 	var wg sync.WaitGroup
 	for _, s := range e.supervisors {
 		wg.Add(1)
-		go func(s *WorkerSupervisor) { defer wg.Done(); s.Shutdown() }(s)
+		go func(s *WorkerSupervisor) {
+			defer wg.Done()
+			s.Shutdown()
+
+			err := e.store.UpdateTaskStatus(
+				e.ctx, s.worker.task.name, store.TaskStatusIdle,
+			)
+			if err != nil {
+				e.logger.Errorf(
+					"Failed to update task '%s' status: %v",
+					s.worker.task.name, err,
+				)
+			}
+		}(s)
 	}
 
 	done := make(chan struct{})
