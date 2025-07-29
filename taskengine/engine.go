@@ -111,7 +111,20 @@ func (e *Engine) ShutdownTask(name string) error {
 	for _, s := range e.supervisors {
 		if s.worker.task.name == name {
 			done := make(chan struct{})
-			go func() { defer close(done); s.Shutdown() }()
+			go func() {
+				defer close(done)
+				s.Shutdown()
+
+				err := e.store.UpdateTaskStatus(
+					e.ctx, s.worker.task.name, store.TaskStatusIdle,
+				)
+				if err != nil {
+					e.logger.Errorf(
+						"Failed to update task '%s' status: %v",
+						s.worker.task.name, err,
+					)
+				}
+			}()
 
 			select {
 			case <-done:
