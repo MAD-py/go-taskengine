@@ -268,7 +268,7 @@ func New(store store.Store, options ...EngineOption) (*Engine, error) {
 	engine := &Engine{
 		ctx:             ctx,
 		store:           store,
-		logger:          newLogger("taskengine"),
+		logger:          newLogger("engine"),
 		supervisors:     make(map[string]*WorkerSupervisor),
 		shutdownTimeout: 30 * time.Second, // Default shutdown timeout
 	}
