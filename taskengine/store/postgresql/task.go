@@ -1,8 +1,6 @@
 package postgresql
 
 import (
-	"context"
-
 	"github.com/MAD-py/go-taskengine/taskengine/store"
 )
 
@@ -10,7 +8,7 @@ type taskStore struct {
 	db DB
 }
 
-func (ts *taskStore) createStore(ctx context.Context) error {
+func (ts *taskStore) createStore() error {
 	query := `
 		CREATE TABLE IF NOT EXISTS tasks (
 			id          SERIAL     PRIMARY KEY,
@@ -23,48 +21,46 @@ func (ts *taskStore) createStore(ctx context.Context) error {
 			created_at  TIMESTAMP  NOT NULL DEFAULT NOW()
 		);
 	`
-	_, err := ts.db.ExecContext(ctx, query)
+	_, err := ts.db.Exec(query)
 	return err
 }
 
-func (ts *taskStore) deleteStore(ctx context.Context) error {
+func (ts *taskStore) deleteStore() error {
 	query := "DROP TABLE IF EXISTS tasks;"
-	_, err := ts.db.ExecContext(ctx, query)
+	_, err := ts.db.Exec(query)
 	return err
 }
 
-func (ts *taskStore) clearStore(ctx context.Context) error {
+func (ts *taskStore) clearStore() error {
 	query := "TRUNCATE TABLE tasks RESTART IDENTITY;"
-	_, err := ts.db.ExecContext(ctx, query)
+	_, err := ts.db.Exec(query)
 	return err
 }
 
-func (ts *taskStore) exists(ctx context.Context, name string) (bool, error) {
+func (ts *taskStore) exists(name string) (bool, error) {
 	query := "SELECT EXISTS(SELECT 1 FROM tasks WHERE name = $1);"
 	var exists bool
-	err := ts.db.QueryRowContext(ctx, query, name).Scan(&exists)
+	err := ts.db.QueryRow(query, name).Scan(&exists)
 	return exists, err
 }
 
 func (ts *taskStore) save(
-	ctx context.Context, name string, settings *store.TaskSettings,
+	name string, settings *store.TaskSettings,
 ) error {
 	query := `
 		INSERT INTO tasks (name, job, trigger, policy)
 		VALUES ($1, $2, $3, $4)
 		RETURNING id;
 	`
-	return ts.db.QueryRowContext(
-		ctx, query, name,
+	return ts.db.QueryRow(
+		query, name,
 		settings.Job,
 		settings.Trigger,
 		settings.Policy,
 	).Err()
 }
 
-func (ts *taskStore) getSettings(
-	ctx context.Context, name string,
-) (*store.TaskSettings, error) {
+func (ts *taskStore) getSettings(name string) (*store.TaskSettings, error) {
 	query := `
 		SELECT job, trigger, policy
 		FROM tasks
@@ -73,7 +69,7 @@ func (ts *taskStore) getSettings(
 
 	var settings store.TaskSettings
 	err := ts.db.
-		QueryRowContext(ctx, query, name).
+		QueryRow(query, name).
 		Scan(&settings.Job, &settings.Trigger, &settings.Policy)
 	if err != nil {
 		return nil, err
@@ -82,16 +78,14 @@ func (ts *taskStore) getSettings(
 }
 
 func (ts *taskStore) updateStatus(
-	ctx context.Context, name string, status store.TaskStatus,
+	name string, status store.TaskStatus,
 ) error {
 	query := "UPDATE tasks SET status = $2 WHERE name = $1;"
-	_, err := ts.db.ExecContext(ctx, query, name, status)
+	_, err := ts.db.Exec(query, name, status)
 	return err
 }
 
-func (ts *taskStore) increaseIteration(
-	ctx context.Context, name string,
-) (int, int, error) {
+func (ts *taskStore) increaseIteration(name string) (int, int, error) {
 	query := `
 		UPDATE tasks
 		SET iteration = iteration + 1
@@ -100,7 +94,7 @@ func (ts *taskStore) increaseIteration(
 	`
 	var id int
 	var iteration int
-	err := ts.db.QueryRowContext(ctx, query, name).Scan(&id, &iteration)
+	err := ts.db.QueryRow(query, name).Scan(&id, &iteration)
 	if err != nil {
 		return 0, 0, err
 	}

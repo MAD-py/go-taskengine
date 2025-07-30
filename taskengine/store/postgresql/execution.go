@@ -1,16 +1,12 @@
 package postgresql
 
-import (
-	"context"
-
-	"github.com/MAD-py/go-taskengine/taskengine/store"
-)
+import "github.com/MAD-py/go-taskengine/taskengine/store"
 
 type executionStore struct {
 	db DB
 }
 
-func (es *executionStore) createStore(ctx context.Context) error {
+func (es *executionStore) createStore() error {
 	query := `
 		CREATE TABLE IF NOT EXISTS executions (
 			id          SERIAL     PRIMARY KEY,
@@ -24,25 +20,23 @@ func (es *executionStore) createStore(ctx context.Context) error {
 		);
 	`
 
-	_, err := es.db.ExecContext(ctx, query)
+	_, err := es.db.Exec(query)
 	return err
 }
 
-func (es *executionStore) deleteStore(ctx context.Context) error {
+func (es *executionStore) deleteStore() error {
 	query := "DROP TABLE IF EXISTS executions;"
-	_, err := es.db.ExecContext(ctx, query)
+	_, err := es.db.Exec(query)
 	return err
 }
 
-func (es *executionStore) clearStore(ctx context.Context) error {
+func (es *executionStore) clearStore() error {
 	query := "TRUNCATE TABLE executions RESTART IDENTITY;"
-	_, err := es.db.ExecContext(ctx, query)
+	_, err := es.db.Exec(query)
 	return err
 }
 
-func (es *executionStore) save(
-	ctx context.Context, execution *store.Execution,
-) error {
+func (es *executionStore) save(execution *store.Execution) error {
 	query := `
 		INSERT INTO executions (task_id, iteration, start_time, end_time, duration, status, error_msg)
 		VALUES ($1, $2, $3, $4, $5, $6, $7);
@@ -53,7 +47,8 @@ func (es *executionStore) save(
 		errorMsg = execution.ErrorMsg
 	}
 
-	_, err := es.db.ExecContext(ctx, query,
+	_, err := es.db.Exec(
+		query,
 		execution.TaskID,
 		execution.Iteration,
 		execution.StartTime,

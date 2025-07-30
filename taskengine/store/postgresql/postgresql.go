@@ -1,15 +1,14 @@
 package postgresql
 
 import (
-	"context"
 	"database/sql"
 
 	"github.com/MAD-py/go-taskengine/taskengine/store"
 )
 
 type DB interface {
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+	Exec(query string, args ...any) (sql.Result, error)
+	QueryRow(query string, args ...any) *sql.Row
 }
 
 var _ store.Store = (*PostgresStore)(nil)
@@ -19,54 +18,54 @@ type PostgresStore struct {
 	executionStore *executionStore
 }
 
-func (ps *PostgresStore) CreateStores(ctx context.Context) error {
-	if err := ps.taskStore.createStore(ctx); err != nil {
+func (ps *PostgresStore) CreateStores() error {
+	if err := ps.taskStore.createStore(); err != nil {
 		return err
 	}
-	if err := ps.executionStore.createStore(ctx); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (ps *PostgresStore) DeleteStores(ctx context.Context) error {
-	if err := ps.executionStore.deleteStore(ctx); err != nil {
-		return err
-	}
-	if err := ps.taskStore.deleteStore(ctx); err != nil {
+	if err := ps.executionStore.createStore(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (ps *PostgresStore) ClearStores(ctx context.Context) error {
-	if err := ps.executionStore.clearStore(ctx); err != nil {
+func (ps *PostgresStore) DeleteStores() error {
+	if err := ps.executionStore.deleteStore(); err != nil {
 		return err
 	}
-	if err := ps.taskStore.clearStore(ctx); err != nil {
+	if err := ps.taskStore.deleteStore(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (ps *PostgresStore) TaskExists(ctx context.Context, name string) (bool, error) {
-	return ps.taskStore.exists(ctx, name)
+func (ps *PostgresStore) ClearStores() error {
+	if err := ps.executionStore.clearStore(); err != nil {
+		return err
+	}
+	if err := ps.taskStore.clearStore(); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (ps *PostgresStore) SaveTask(ctx context.Context, name string, settings *store.TaskSettings) error {
-	return ps.taskStore.save(ctx, name, settings)
+func (ps *PostgresStore) TaskExists(name string) (bool, error) {
+	return ps.taskStore.exists(name)
 }
 
-func (ps *PostgresStore) GetTaskSettings(ctx context.Context, name string) (*store.TaskSettings, error) {
-	return ps.taskStore.getSettings(ctx, name)
+func (ps *PostgresStore) SaveTask(name string, settings *store.TaskSettings) error {
+	return ps.taskStore.save(name, settings)
 }
 
-func (ps *PostgresStore) UpdateTaskStatus(ctx context.Context, name string, status store.TaskStatus) error {
-	return ps.taskStore.updateStatus(ctx, name, status)
+func (ps *PostgresStore) GetTaskSettings(name string) (*store.TaskSettings, error) {
+	return ps.taskStore.getSettings(name)
 }
 
-func (ps *PostgresStore) SaveExecution(ctx context.Context, name string, info *store.ExecutionInfo) error {
-	taskID, iteration, err := ps.taskStore.increaseIteration(ctx, name)
+func (ps *PostgresStore) UpdateTaskStatus(name string, status store.TaskStatus) error {
+	return ps.taskStore.updateStatus(name, status)
+}
+
+func (ps *PostgresStore) SaveExecution(name string, info *store.ExecutionInfo) error {
+	taskID, iteration, err := ps.taskStore.increaseIteration(name)
 	if err != nil {
 		return err
 	}
@@ -77,7 +76,7 @@ func (ps *PostgresStore) SaveExecution(ctx context.Context, name string, info *s
 		Iteration:     iteration,
 	}
 
-	return ps.executionStore.save(ctx, execution)
+	return ps.executionStore.save(execution)
 }
 
 func NewStore(db DB) *PostgresStore {

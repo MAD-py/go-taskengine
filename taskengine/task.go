@@ -38,7 +38,6 @@ func (t *Task) Execute(parentCtx context.Context, tick *Tick) {
 			t.logger.Errorf("PANIC in Task '%s' job: %v", t.name, r)
 
 			err := t.store.SaveExecution(
-				parentCtx,
 				t.name,
 				&store.ExecutionInfo{
 					StartTime: startTime,
@@ -86,7 +85,6 @@ func (t *Task) Execute(parentCtx context.Context, tick *Tick) {
 		t.logger.Errorf("Task '%s' failed: %v", t.name, err)
 
 		err := t.store.SaveExecution(
-			parentCtx,
 			t.name,
 			&store.ExecutionInfo{
 				StartTime: startTime,
@@ -108,7 +106,6 @@ func (t *Task) Execute(parentCtx context.Context, tick *Tick) {
 	t.logger.Infof("Task '%s' completed successfully", t.name)
 
 	err = t.store.SaveExecution(
-		parentCtx,
 		t.name,
 		&store.ExecutionInfo{
 			StartTime: startTime,
@@ -125,7 +122,7 @@ func (t *Task) Execute(parentCtx context.Context, tick *Tick) {
 	}
 }
 
-func NewTask(name string, job Job, timeout time.Duration) (*Task, error) {
+func NewTask(name string, job Job, options ...taskOption) (*Task, error) {
 	if name == "" {
 		return nil, errors.New("task name must be non-empty")
 	}
@@ -137,10 +134,30 @@ func NewTask(name string, job Job, timeout time.Duration) (*Task, error) {
 	jobPtr := reflect.ValueOf(job).Pointer()
 	jobName := runtime.FuncForPC(jobPtr).Name()
 
-	return &Task{
+	task := &Task{
 		job:     job,
 		name:    name,
 		jobName: jobName,
-		timeout: timeout,
-	}, nil
+		logger:  newLogger(name),
+	}
+
+	for _, opt := range options {
+		opt(task)
+	}
+
+	return task, nil
+}
+
+type taskOption func(*Task)
+
+func WithTaskLogger(logger Logger) taskOption {
+	return func(t *Task) {
+		t.logger = logger
+	}
+}
+
+func WithTimeout(timeout time.Duration) taskOption {
+	return func(t *Task) {
+		t.timeout = timeout
+	}
 }

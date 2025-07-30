@@ -3,6 +3,7 @@ package taskengine
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/signal"
 	"sync"
@@ -40,7 +41,7 @@ func (e *Engine) Start() {
 	e.logger.Info("Starting Task Engine...")
 	for _, s := range e.supervisors {
 		err := e.store.UpdateTaskStatus(
-			e.ctx, s.worker.task.name, store.TaskStatusRunning,
+			s.worker.task.name, store.TaskStatusRunning,
 		)
 		if err != nil {
 			e.logger.Errorf(
@@ -66,7 +67,7 @@ func (e *Engine) Shutdown() error {
 			s.Shutdown()
 
 			err := e.store.UpdateTaskStatus(
-				e.ctx, s.worker.task.name, store.TaskStatusIdle,
+				s.worker.task.name, store.TaskStatusIdle,
 			)
 			if err != nil {
 				e.logger.Errorf(
@@ -97,7 +98,7 @@ func (e *Engine) StartTask(name string) error {
 	for _, s := range e.supervisors {
 		if s.worker.task.name == name {
 			err := e.store.UpdateTaskStatus(
-				e.ctx, s.worker.task.name, store.TaskStatusRunning,
+				s.worker.task.name, store.TaskStatusRunning,
 			)
 			if err != nil {
 				e.logger.Errorf(
@@ -125,7 +126,7 @@ func (e *Engine) ShutdownTask(name string) error {
 				s.Shutdown()
 
 				err := e.store.UpdateTaskStatus(
-					e.ctx, s.worker.task.name, store.TaskStatusIdle,
+					s.worker.task.name, store.TaskStatusIdle,
 				)
 				if err != nil {
 					e.logger.Errorf(
@@ -165,7 +166,7 @@ func (e *Engine) RegisterTask(
 
 	e.logger.Infof("Registering task '%s' with policy '%s'", task.name, policy)
 
-	exists, err := e.store.TaskExists(e.ctx, task.name)
+	exists, err := e.store.TaskExists(task.name)
 	if err != nil {
 		return err
 	}
@@ -176,7 +177,7 @@ func (e *Engine) RegisterTask(
 			return err
 		}
 	} else {
-		err := e.store.SaveTask(e.ctx, task.name, &store.TaskSettings{
+		err := e.store.SaveTask(task.name, &store.TaskSettings{
 			Job:     task.jobName,
 			Policy:  policy.String(),
 			Trigger: trigger.String(),
@@ -187,13 +188,23 @@ func (e *Engine) RegisterTask(
 	}
 
 	task.store = e.store
-	task.logger = e.logger
 
 	dispatcher := newDispatcher(maxExecutionLag)
-	worker := newWorker(task, dispatcher, policy, e.logger)
-	scheduler := newScheduler(trigger, dispatcher, catchUpEnabled, e.logger)
 
-	ws := newWorkerSupervisor(worker, scheduler, dispatcher, e.logger)
+	var ws *WorkerSupervisor
+	var worker *Worker
+	var scheduler *Scheduler
+
+	switch e.logger.(type) {
+	case *stdLogger:
+		worker = newWorker(task, dispatcher, policy, newLogger(fmt.Sprintf("worker.%s", task.name)))
+		scheduler = newScheduler(trigger, dispatcher, catchUpEnabled, newLogger(fmt.Sprintf("scheduler.%s", task.name)))
+		ws = newWorkerSupervisor(worker, scheduler, dispatcher, newLogger(fmt.Sprintf("workerSupervisor.%s", task.name)))
+	default:
+		worker = newWorker(task, dispatcher, policy, e.logger)
+		scheduler = newScheduler(trigger, dispatcher, catchUpEnabled, e.logger)
+		ws = newWorkerSupervisor(worker, scheduler, dispatcher, e.logger)
+	}
 
 	e.mu.Lock()
 	e.supervisors[task.name] = ws
@@ -207,7 +218,7 @@ func (e *Engine) RegisterTask(
 func (e *Engine) validateTaskSettings(
 	taskName, jobName string, policy workerPolicy, trigger Trigger,
 ) error {
-	taskSettings, err := e.store.GetTaskSettings(e.ctx, taskName)
+	taskSettings, err := e.store.GetTaskSettings(taskName)
 	if err != nil {
 		return err
 	}
@@ -235,7 +246,7 @@ func (e *Engine) RemoveTask(name string) error {
 		supervisor.Shutdown()
 		delete(e.supervisors, name)
 
-		err := e.store.UpdateTaskStatus(e.ctx, name, store.TaskStatusIdle)
+		err := e.store.UpdateTaskStatus(name, store.TaskStatusIdle)
 		if err != nil {
 			return err
 		}
@@ -248,17 +259,37 @@ func (e *Engine) RemoveTask(name string) error {
 	return errors.New("task not found")
 }
 
-func New(store store.Store) (*Engine, error) {
+func New(store store.Store, options ...EngineOption) (*Engine, error) {
 	ctx := context.Background()
-	if err := store.CreateStores(ctx); err != nil {
+	if err := store.CreateStores(); err != nil {
 		return nil, err
 	}
 
-	return &Engine{
+	engine := &Engine{
 		ctx:             ctx,
 		store:           store,
-		logger:          &stdLogger{},
+		logger:          newLogger("taskengine"),
 		supervisors:     make(map[string]*WorkerSupervisor),
 		shutdownTimeout: 30 * time.Second, // Default shutdown timeout
-	}, nil
+	}
+
+	for _, opt := range options {
+		opt(engine)
+	}
+
+	return engine, nil
+}
+
+type EngineOption func(*Engine)
+
+func WithShutdownTimeout(timeout time.Duration) EngineOption {
+	return func(e *Engine) {
+		e.shutdownTimeout = timeout
+	}
+}
+
+func WithLogger(logger Logger) EngineOption {
+	return func(e *Engine) {
+		e.logger = logger
+	}
 }

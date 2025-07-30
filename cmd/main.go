@@ -34,7 +34,7 @@ func main() {
 		panic(err)
 	}
 
-	task, err := taskengine.NewTask("example_task", Test, 5*time.Second)
+	task, err := taskengine.NewTask("example_task", Test)
 	if err != nil {
 		panic(err)
 	}
