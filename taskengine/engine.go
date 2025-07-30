@@ -186,6 +186,9 @@ func (e *Engine) RegisterTask(
 		}
 	}
 
+	task.store = e.store
+	task.logger = e.logger
+
 	dispatcher := newDispatcher(maxExecutionLag)
 	worker := newWorker(task, dispatcher, policy, e.logger)
 	scheduler := newScheduler(trigger, dispatcher, catchUpEnabled, e.logger)

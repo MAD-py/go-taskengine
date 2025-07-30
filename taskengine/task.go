@@ -3,9 +3,12 @@ package taskengine
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"runtime"
 	"time"
+
+	"github.com/MAD-py/go-taskengine/taskengine/store"
 )
 
 type Job = func(ctx *Context) error
@@ -18,14 +21,40 @@ type Task struct {
 
 	logger  Logger
 	timeout time.Duration
+
+	store store.Store
 }
 
 func (t *Task) Name() string { return t.name }
 
 func (t *Task) Execute(parentCtx context.Context, tick *Tick) {
+	startTime := time.Now()
+
 	defer func() {
 		if r := recover(); r != nil {
+			endTime := time.Now()
+			duration := endTime.Sub(startTime)
+
 			t.logger.Errorf("PANIC in Task '%s' job: %v", t.name, r)
+
+			err := t.store.SaveExecution(
+				parentCtx,
+				t.name,
+				&store.ExecutionInfo{
+					StartTime: startTime,
+					EndTime:   endTime,
+					Duration:  duration,
+					Status:    store.ExecutionStatusPanic,
+					ErrorMsg:  fmt.Sprintf("PANIC: %v", r),
+				},
+			)
+
+			if err != nil {
+				t.logger.Errorf(
+					"Failed to save execution info for task '%s': %v",
+					t.name, err,
+				)
+			}
 		}
 	}()
 
@@ -48,11 +77,51 @@ func (t *Task) Execute(parentCtx context.Context, tick *Tick) {
 	}
 
 	t.logger.Infof("Executing Task '%s'", t.name)
-	if err := t.job(&ctxTask); err != nil {
+
+	err := t.job(&ctxTask)
+	endTime := time.Now()
+	duration := endTime.Sub(startTime)
+
+	if err != nil {
 		t.logger.Errorf("Task '%s' failed: %v", t.name, err)
 
-	} else {
-		t.logger.Infof("Task '%s' completed successfully", t.name)
+		err := t.store.SaveExecution(
+			parentCtx,
+			t.name,
+			&store.ExecutionInfo{
+				StartTime: startTime,
+				EndTime:   endTime,
+				Duration:  duration,
+				Status:    store.ExecutionStatusError,
+				ErrorMsg:  err.Error(),
+			},
+		)
+		if err != nil {
+			t.logger.Errorf(
+				"Failed to save execution info for task '%s': %v",
+				t.name, err,
+			)
+		}
+		return
+	}
+
+	t.logger.Infof("Task '%s' completed successfully", t.name)
+
+	err = t.store.SaveExecution(
+		parentCtx,
+		t.name,
+		&store.ExecutionInfo{
+			StartTime: startTime,
+			EndTime:   endTime,
+			Duration:  duration,
+			Status:    store.ExecutionStatusSuccess,
+		},
+	)
+	if err != nil {
+		t.logger.Errorf(
+			"Failed to save execution info for task '%s': %v",
+			t.name, err,
+		)
 	}
 }
 
@@ -71,7 +140,6 @@ func NewTask(name string, job Job, timeout time.Duration) (*Task, error) {
 	return &Task{
 		job:     job,
 		name:    name,
-		logger:  &stdLogger{},
 		jobName: jobName,
 		timeout: timeout,
 	}, nil

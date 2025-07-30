@@ -12,7 +12,8 @@ const (
 type ExecutionStatus string
 
 const (
-	ExecutionStatusFailed  ExecutionStatus = "failed"
+	ExecutionStatusPanic   ExecutionStatus = "panic"
+	ExecutionStatusError   ExecutionStatus = "error"
 	ExecutionStatusSuccess ExecutionStatus = "success"
 	ExecutionStatusSkipped ExecutionStatus = "skipped"
 )

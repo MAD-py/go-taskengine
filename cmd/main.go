@@ -12,7 +12,7 @@ import (
 
 func Test(ctx *taskengine.Context) error {
 	ctx.Logger().Info("Hi, I'm an example task running every 10 seconds!")
-	time.Sleep(30 * time.Second)
+	time.Sleep(3 * time.Second)
 	return nil
 }
 
