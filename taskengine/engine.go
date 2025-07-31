@@ -260,13 +260,12 @@ func (e *Engine) RemoveTask(name string) error {
 }
 
 func New(store store.Store, options ...EngineOption) (*Engine, error) {
-	ctx := context.Background()
 	if err := store.CreateStores(); err != nil {
 		return nil, err
 	}
 
 	engine := &Engine{
-		ctx:             ctx,
+		ctx:             context.Background(),
 		store:           store,
 		logger:          newLogger("engine"),
 		supervisors:     make(map[string]*WorkerSupervisor),
