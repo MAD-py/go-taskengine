@@ -16,6 +16,7 @@ func (es *executionStore) createStore() error {
 			end_time    TIMESTAMP  NOT NULL,
 			duration    BIGINT     NOT NULL,
 			status      TEXT       NOT NULL,
+			tick        TIMESTAMP  NOT NULL,
 			error_msg   TEXT
 		);
 	`
@@ -38,8 +39,8 @@ func (es *executionStore) clearStore() error {
 
 func (es *executionStore) save(execution *store.Execution) error {
 	query := `
-		INSERT INTO executions (task_id, iteration, start_time, end_time, duration, status, error_msg)
-		VALUES ($1, $2, $3, $4, $5, $6, $7);
+		INSERT INTO executions (task_id, iteration, start_time, end_time, duration, status, tick, error_msg)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
 	`
 
 	var errorMsg any
@@ -55,6 +56,7 @@ func (es *executionStore) save(execution *store.Execution) error {
 		execution.EndTime,
 		execution.Duration.Milliseconds(),
 		execution.Status,
+		execution.Tick,
 		errorMsg,
 	)
 	return err

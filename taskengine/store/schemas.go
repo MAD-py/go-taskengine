@@ -29,6 +29,7 @@ type ExecutionInfo struct {
 	EndTime   time.Time       `json:"end_time"`
 	Duration  time.Duration   `json:"duration"`
 	Status    ExecutionStatus `json:"status"`
+	Tick      time.Time       `json:"tick"`
 	ErrorMsg  string          `json:"error_msg,omitempty"`
 }
 
