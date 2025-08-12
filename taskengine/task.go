@@ -44,6 +44,7 @@ func (t *Task) Execute(parentCtx context.Context, tick *Tick) {
 					EndTime:   endTime,
 					Duration:  duration,
 					Status:    store.ExecutionStatusPanic,
+					Tick:      tick.currentTick,
 					ErrorMsg:  fmt.Sprintf("PANIC: %v", r),
 				},
 			)
@@ -91,6 +92,7 @@ func (t *Task) Execute(parentCtx context.Context, tick *Tick) {
 				EndTime:   endTime,
 				Duration:  duration,
 				Status:    store.ExecutionStatusError,
+				Tick:      tick.currentTick,
 				ErrorMsg:  err.Error(),
 			},
 		)
@@ -112,6 +114,7 @@ func (t *Task) Execute(parentCtx context.Context, tick *Tick) {
 			EndTime:   endTime,
 			Duration:  duration,
 			Status:    store.ExecutionStatusSuccess,
+			Tick:      tick.currentTick,
 		},
 	)
 	if err != nil {
