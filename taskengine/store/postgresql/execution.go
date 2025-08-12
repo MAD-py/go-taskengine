@@ -1,6 +1,10 @@
 package postgresql
 
-import "github.com/MAD-py/go-taskengine/taskengine/store"
+import (
+	"time"
+
+	"github.com/MAD-py/go-taskengine/taskengine/store"
+)
 
 type executionStore struct {
 	db DB
@@ -60,6 +64,21 @@ func (es *executionStore) save(execution *store.Execution) error {
 		errorMsg,
 	)
 	return err
+}
+
+func (es *executionStore) getLastTick(taskName string) (time.Time, error) {
+	query := `
+		SELECT e.tick 
+		FROM executions e
+		JOIN tasks t ON e.task_id = t.id
+		WHERE t.name = $1
+		ORDER BY e.iteration DESC
+		LIMIT 1;
+	`
+
+	var tick time.Time
+	err := es.db.QueryRow(query, taskName).Scan(&tick)
+	return tick, err
 }
 
 func newExecutionStore(db DB) *executionStore {

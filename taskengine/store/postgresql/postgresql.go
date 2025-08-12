@@ -2,6 +2,7 @@ package postgresql
 
 import (
 	"database/sql"
+	"time"
 
 	"github.com/MAD-py/go-taskengine/taskengine/store"
 )
@@ -77,6 +78,10 @@ func (ps *PostgresStore) SaveExecution(name string, info *store.ExecutionInfo) e
 	}
 
 	return ps.executionStore.save(execution)
+}
+
+func (ps *PostgresStore) GetLastTick(name string) (time.Time, error) {
+	return ps.executionStore.getLastTick(name)
 }
 
 func NewStore(db DB) *PostgresStore {

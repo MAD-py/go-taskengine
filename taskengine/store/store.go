@@ -1,5 +1,7 @@
 package store
 
+import "time"
+
 type Store interface {
 	CreateStores() error
 	DeleteStores() error
@@ -10,4 +12,5 @@ type Store interface {
 	SaveExecution(name string, info *ExecutionInfo) error
 	GetTaskSettings(name string) (*TaskSettings, error)
 	UpdateTaskStatus(name string, status TaskStatus) error
+	GetLastTick(name string) (time.Time, error)
 }
