@@ -189,6 +189,12 @@ func (e *Engine) RegisterTask(
 
 	task.store = e.store
 
+	lastTick, err := e.store.GetLastTick(task.name)
+	if err != nil {
+		e.logger.Warnf("Could not retrieve last tick for task '%s': %v", task.name, err)
+		lastTick = time.Time{}
+	}
+
 	dispatcher := newDispatcher(maxExecutionLag)
 
 	var ws *WorkerSupervisor
@@ -198,11 +204,11 @@ func (e *Engine) RegisterTask(
 	switch e.logger.(type) {
 	case *stdLogger:
 		worker = newWorker(task, dispatcher, policy, newLogger(fmt.Sprintf("worker.%s", task.name)))
-		scheduler = newScheduler(trigger, dispatcher, catchUpEnabled, newLogger(fmt.Sprintf("scheduler.%s", task.name)))
+		scheduler = newScheduler(trigger, dispatcher, catchUpEnabled, lastTick, newLogger(fmt.Sprintf("scheduler.%s", task.name)))
 		ws = newWorkerSupervisor(worker, scheduler, dispatcher, newLogger(fmt.Sprintf("workerSupervisor.%s", task.name)))
 	default:
 		worker = newWorker(task, dispatcher, policy, e.logger)
-		scheduler = newScheduler(trigger, dispatcher, catchUpEnabled, e.logger)
+		scheduler = newScheduler(trigger, dispatcher, catchUpEnabled, lastTick, e.logger)
 		ws = newWorkerSupervisor(worker, scheduler, dispatcher, e.logger)
 	}
 

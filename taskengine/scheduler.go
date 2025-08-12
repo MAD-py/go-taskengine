@@ -30,6 +30,7 @@ type Scheduler struct {
 
 	state          atomic.Value
 	catchUpEnabled bool
+	initLastTick   time.Time
 
 	logger Logger
 }
@@ -48,7 +49,7 @@ func (s *Scheduler) Run(ctx context.Context) error {
 
 	s.logger.Info("Starting Scheduler...")
 
-	var lastTick time.Time
+	lastTick := s.initLastTick
 	s.state.Store(schedulerRunning)
 
 Run:
@@ -122,6 +123,7 @@ func newScheduler(
 	trigger Trigger,
 	dispatcher *Dispatcher,
 	catchUpEnabled bool,
+	initLastTick time.Time,
 	logger Logger,
 ) *Scheduler {
 	s := &Scheduler{
@@ -130,6 +132,7 @@ func newScheduler(
 		control:        make(chan schedulerControlCommand, 1),
 		dispatcher:     dispatcher,
 		catchUpEnabled: catchUpEnabled,
+		initLastTick:   initLastTick,
 	}
 	s.state.Store(schedulerIdle)
 	return s
