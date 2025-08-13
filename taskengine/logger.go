@@ -16,6 +16,8 @@ type Logger interface {
 	Errorf(format string, args ...any)
 }
 
+type LoggerFactory func(module string) Logger
+
 type stdLogger struct {
 	prefixInfo  string
 	prefixWarn  string
@@ -34,7 +36,7 @@ func (l *stdLogger) Error(msg string) { log.Println(l.prefixError + msg) }
 
 func (l *stdLogger) Errorf(format string, args ...any) { log.Printf(l.prefixError+format, args...) }
 
-func newLogger(module string) Logger {
+func DefaultLoggerFactory(module string) Logger {
 	if module == "" {
 		return &stdLogger{
 			prefixInfo:  "[INFO] ",

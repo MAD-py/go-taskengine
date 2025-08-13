@@ -21,8 +21,9 @@ type Engine struct {
 
 	supervisors map[string]*WorkerSupervisor
 
-	store  store.Store
-	logger Logger
+	store         store.Store
+	logger        Logger
+	loggerFactory LoggerFactory
 }
 
 func (e *Engine) Run() error {
@@ -187,7 +188,8 @@ func (e *Engine) RegisterTask(
 		}
 	}
 
-	task.store = e.store
+	task.setLogger(e.loggerFactory)
+	task.setStore(e.store)
 
 	lastTick, err := e.store.GetLastTick(task.name)
 	if err != nil {
@@ -197,20 +199,9 @@ func (e *Engine) RegisterTask(
 
 	dispatcher := newDispatcher(maxExecutionLag)
 
-	var ws *WorkerSupervisor
-	var worker *Worker
-	var scheduler *Scheduler
-
-	switch e.logger.(type) {
-	case *stdLogger:
-		worker = newWorker(task, dispatcher, policy, newLogger(fmt.Sprintf("worker.%s", task.name)))
-		scheduler = newScheduler(trigger, dispatcher, catchUpEnabled, lastTick, newLogger(fmt.Sprintf("scheduler.%s", task.name)))
-		ws = newWorkerSupervisor(worker, scheduler, dispatcher, newLogger(fmt.Sprintf("workerSupervisor.%s", task.name)))
-	default:
-		worker = newWorker(task, dispatcher, policy, e.logger)
-		scheduler = newScheduler(trigger, dispatcher, catchUpEnabled, lastTick, e.logger)
-		ws = newWorkerSupervisor(worker, scheduler, dispatcher, e.logger)
-	}
+	worker := newWorker(task, dispatcher, policy, e.loggerFactory(fmt.Sprintf("worker.%s", task.name)))
+	scheduler := newScheduler(trigger, dispatcher, catchUpEnabled, lastTick, e.loggerFactory(fmt.Sprintf("scheduler.%s", task.name)))
+	ws := newWorkerSupervisor(worker, scheduler, dispatcher, e.loggerFactory(fmt.Sprintf("workerSupervisor.%s", task.name)))
 
 	e.mu.Lock()
 	e.supervisors[task.name] = ws
@@ -273,7 +264,7 @@ func New(store store.Store, options ...EngineOption) (*Engine, error) {
 	engine := &Engine{
 		ctx:             context.Background(),
 		store:           store,
-		logger:          newLogger("engine"),
+		loggerFactory:   DefaultLoggerFactory,
 		supervisors:     make(map[string]*WorkerSupervisor),
 		shutdownTimeout: 30 * time.Second, // Default shutdown timeout
 	}
@@ -281,6 +272,9 @@ func New(store store.Store, options ...EngineOption) (*Engine, error) {
 	for _, opt := range options {
 		opt(engine)
 	}
+
+	// Create engine logger after options are applied
+	engine.logger = engine.loggerFactory("engine")
 
 	return engine, nil
 }
@@ -293,8 +287,8 @@ func WithShutdownTimeout(timeout time.Duration) EngineOption {
 	}
 }
 
-func WithLogger(logger Logger) EngineOption {
+func WithLoggerFactory(factory LoggerFactory) EngineOption {
 	return func(e *Engine) {
-		e.logger = logger
+		e.loggerFactory = factory
 	}
 }

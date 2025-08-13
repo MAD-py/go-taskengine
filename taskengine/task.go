@@ -27,6 +27,10 @@ type Task struct {
 
 func (t *Task) Name() string { return t.name }
 
+func (t *Task) setLogger(factory LoggerFactory) { t.logger = factory(t.name) }
+
+func (t *Task) setStore(store store.Store) { t.store = store }
+
 func (t *Task) Execute(parentCtx context.Context, tick *Tick) {
 	startTime := time.Now()
 
@@ -141,7 +145,6 @@ func NewTask(name string, job Job, options ...taskOption) (*Task, error) {
 		job:     job,
 		name:    name,
 		jobName: jobName,
-		logger:  newLogger(name),
 	}
 
 	for _, opt := range options {
@@ -152,12 +155,6 @@ func NewTask(name string, job Job, options ...taskOption) (*Task, error) {
 }
 
 type taskOption func(*Task)
-
-func WithTaskLogger(logger Logger) taskOption {
-	return func(t *Task) {
-		t.logger = logger
-	}
-}
 
 func WithTimeout(timeout time.Duration) taskOption {
 	return func(t *Task) {
