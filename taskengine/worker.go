@@ -39,7 +39,7 @@ type Worker struct {
 
 	task *Task
 
-	dispatcher *Dispatcher
+	dispatcher Dispatcher
 
 	policy workerPolicy
 
@@ -105,7 +105,7 @@ func (w *Worker) Run(ctx context.Context) {
 
 func newWorker(
 	task *Task,
-	dispatcher *Dispatcher,
+	dispatcher Dispatcher,
 	policy workerPolicy,
 	logger Logger,
 ) *Worker {

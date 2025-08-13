@@ -10,19 +10,27 @@ type Tick struct {
 	currentTick time.Time
 }
 
-type Dispatcher struct {
+type Dispatcher interface {
+	Size() int
+	Close()
+	Enqueue(tick *Tick) error
+	Dequeue() <-chan *Tick
+	Capacity() int
+}
+
+type dispatcher struct {
 	queue chan *Tick
 }
 
-func (d *Dispatcher) Capacity() int {
+func (d *dispatcher) Capacity() int {
 	return cap(d.queue)
 }
 
-func (d *Dispatcher) Size() int {
+func (d *dispatcher) Size() int {
 	return len(d.queue)
 }
 
-func (d *Dispatcher) Enqueue(tick *Tick) error {
+func (d *dispatcher) Enqueue(tick *Tick) error {
 	select {
 	case d.queue <- tick:
 		return nil
@@ -31,19 +39,19 @@ func (d *Dispatcher) Enqueue(tick *Tick) error {
 	}
 }
 
-func (d *Dispatcher) Dequeue() <-chan *Tick {
+func (d *dispatcher) Dequeue() <-chan *Tick {
 	return d.queue
 }
 
-func (d *Dispatcher) Close() {
+func (d *dispatcher) Close() {
 	close(d.queue)
 }
 
-func newDispatcher(capacity int) *Dispatcher {
+func newDispatcher(capacity int) Dispatcher {
 	if capacity <= 0 {
 		capacity = 100 // Default capacity
 	}
-	return &Dispatcher{
+	return &dispatcher{
 		queue: make(chan *Tick, capacity),
 	}
 }

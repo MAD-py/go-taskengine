@@ -18,7 +18,7 @@ type WorkerSupervisor struct {
 
 	worker     *Worker
 	scheduler  *Scheduler
-	dispatcher *Dispatcher
+	dispatcher Dispatcher
 
 	shutdown context.CancelFunc
 
@@ -63,7 +63,7 @@ func (ws *WorkerSupervisor) Start(ctx context.Context) {
 }
 
 func newWorkerSupervisor(
-	worker *Worker, scheduler *Scheduler, dispatcher *Dispatcher, logger Logger,
+	worker *Worker, scheduler *Scheduler, dispatcher Dispatcher, logger Logger,
 ) *WorkerSupervisor {
 	ws := &WorkerSupervisor{
 		logger:     logger,

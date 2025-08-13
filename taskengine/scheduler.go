@@ -24,7 +24,7 @@ const (
 type Scheduler struct {
 	trigger Trigger
 
-	dispatcher *Dispatcher
+	dispatcher Dispatcher
 
 	control chan schedulerControlCommand
 
@@ -121,7 +121,7 @@ Run:
 
 func newScheduler(
 	trigger Trigger,
-	dispatcher *Dispatcher,
+	dispatcher Dispatcher,
 	catchUpEnabled bool,
 	initLastTick time.Time,
 	logger Logger,
