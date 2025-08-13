@@ -7,7 +7,7 @@ import (
 
 func TestCapacity(t *testing.T) {
 	want := 10
-	dispatcher := Dispatcher{queue: make(chan *Tick, want)}
+	dispatcher := &dispatcher{queue: make(chan *Tick, want)}
 
 	if got := dispatcher.Capacity(); want != got {
 		t.Errorf("expected capacity %d, got %d", want, got)
@@ -16,7 +16,7 @@ func TestCapacity(t *testing.T) {
 
 func TestSize(t *testing.T) {
 	want := 0
-	dispatcher := Dispatcher{queue: make(chan *Tick, 10)}
+	dispatcher := &dispatcher{queue: make(chan *Tick, 10)}
 
 	if got := dispatcher.Size(); want != got {
 		t.Errorf("expected size %d, got %d", want, got)
@@ -30,7 +30,7 @@ func TestSize(t *testing.T) {
 }
 
 func TestEnqueue(t *testing.T) {
-	dispatcher := Dispatcher{queue: make(chan *Tick, 1)}
+	dispatcher := &dispatcher{queue: make(chan *Tick, 1)}
 
 	if err := dispatcher.Enqueue(&Tick{}); err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -42,7 +42,7 @@ func TestEnqueue(t *testing.T) {
 }
 
 func TestDequeue(t *testing.T) {
-	dispatcher := Dispatcher{queue: make(chan *Tick, 1)}
+	dispatcher := &dispatcher{queue: make(chan *Tick, 1)}
 	tick := &Tick{}
 
 	dispatcher.queue <- &Tick{}
@@ -53,7 +53,7 @@ func TestDequeue(t *testing.T) {
 }
 
 func TestClose(t *testing.T) {
-	dispatcher := Dispatcher{queue: make(chan *Tick, 10)}
+	dispatcher := &dispatcher{queue: make(chan *Tick, 10)}
 	dispatcher.Close()
 
 	select {
