@@ -164,25 +164,28 @@ func TestNewIntervalTrigger(t *testing.T) {
 
 func TestCronTriggerString(t *testing.T) {
 	tests := []struct {
-		name     string
-		expr     string
-		expected string
+		name       string
+		expr       string
+		runOnStart bool
+		expected   string
 	}{
 		{
-			name:     "weekday morning",
-			expr:     "0 9 * * 1-5",
-			expected: "Cron(expr=0 9 * * 1-5)",
+			name:       "weekday morning without runOnStart",
+			expr:       "0 9 * * 1-5",
+			runOnStart: false,
+			expected:   "Cron(expr=0 9 * * 1-5, runOnStart=false)",
 		},
 		{
-			name:     "every minute",
-			expr:     "* * * * *",
-			expected: "Cron(expr=* * * * *)",
+			name:       "every minute with runOnStart",
+			expr:       "* * * * *",
+			runOnStart: true,
+			expected:   "Cron(expr=* * * * *, runOnStart=true)",
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			trigger := &cronTrigger{expr: tc.expr}
+			trigger := &cronTrigger{expr: tc.expr, runOnStart: tc.runOnStart}
 
 			if got := trigger.String(); got != tc.expected {
 				t.Errorf("expected %s, got %s", tc.expected, got)
@@ -195,53 +198,62 @@ func TestNewCronTrigger(t *testing.T) {
 	tests := []struct {
 		name        string
 		expr        string
+		runOnStart  bool
 		expectError bool
 	}{
 		{
-			name:        "every minute",
+			name:        "every minute without runOnStart",
 			expr:        "* * * * *",
+			runOnStart:  false,
 			expectError: false,
 		},
 		{
-			name:        "weekdays 9 AM",
+			name:        "weekdays 9 AM with runOnStart",
 			expr:        "0 9 * * 1-5",
+			runOnStart:  true,
 			expectError: false,
 		},
 		{
 			name:        "first day of month",
 			expr:        "0 0 1 * *",
+			runOnStart:  false,
 			expectError: false,
 		},
 		{
 			name:        "empty expression",
 			expr:        "",
+			runOnStart:  false,
 			expectError: true,
 		},
 		{
 			name:        "invalid expression",
 			expr:        "invalid",
+			runOnStart:  true,
 			expectError: true,
 		},
 		{
 			name:        "too few fields",
 			expr:        "* * * *",
+			runOnStart:  false,
 			expectError: true,
 		},
 		{
 			name:        "invalid minute",
 			expr:        "60 * * * *",
+			runOnStart:  true,
 			expectError: true,
 		},
 		{
 			name:        "invalid hour",
 			expr:        "* 25 * * *",
+			runOnStart:  false,
 			expectError: true,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			trigger, err := NewCronTrigger(tc.expr)
+			trigger, err := NewCronTrigger(tc.expr, tc.runOnStart)
 
 			if tc.expectError {
 				if err == nil {
@@ -262,6 +274,15 @@ func TestNewCronTrigger(t *testing.T) {
 				}
 				// Test that it implements Trigger interface
 				var _ Trigger = trigger
+
+				// Test that runOnStart is set correctly
+				cronTrig, ok := trigger.(*cronTrigger)
+				if !ok {
+					t.Errorf("expected *cronTrigger, got %T", trigger)
+				}
+				if cronTrig.runOnStart != tc.runOnStart {
+					t.Errorf("expected runOnStart=%v, got %v", tc.runOnStart, cronTrig.runOnStart)
+				}
 			}
 		})
 	}
@@ -271,30 +292,42 @@ func TestCronTriggerNext(t *testing.T) {
 	tests := []struct {
 		name        string
 		expr        string
+		runOnStart  bool
 		lastRun     time.Time
 		expectError bool
 	}{
 		{
-			name:        "every minute with zero lastRun",
+			name:        "every minute with zero lastRun and runOnStart false",
 			expr:        "* * * * *",
+			runOnStart:  false,
+			lastRun:     time.Time{},
+			expectError: false,
+		},
+		{
+			name:        "every minute with zero lastRun and runOnStart true",
+			expr:        "* * * * *",
+			runOnStart:  true,
 			lastRun:     time.Time{},
 			expectError: false,
 		},
 		{
 			name:        "every minute with lastRun",
 			expr:        "* * * * *",
+			runOnStart:  true,
 			lastRun:     time.Now().Add(-30 * time.Second),
 			expectError: false,
 		},
 		{
-			name:        "weekdays 9 AM",
+			name:        "weekdays 9 AM with runOnStart true",
 			expr:        "0 9 * * 1-5",
+			runOnStart:  true,
 			lastRun:     time.Time{},
 			expectError: false,
 		},
 		{
-			name:        "first day of month",
+			name:        "first day of month with runOnStart false",
 			expr:        "0 0 1 * *",
+			runOnStart:  false,
 			lastRun:     time.Now().Add(-24 * time.Hour),
 			expectError: false,
 		},
@@ -302,9 +335,11 @@ func TestCronTriggerNext(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			trigger := &cronTrigger{expr: tc.expr}
+			trigger := &cronTrigger{expr: tc.expr, runOnStart: tc.runOnStart}
 
+			before := time.Now()
 			next, err := trigger.Next(tc.lastRun)
+			after := time.Now()
 
 			if tc.expectError {
 				if err == nil {
@@ -319,13 +354,19 @@ func TestCronTriggerNext(t *testing.T) {
 					t.Errorf("expected next time to be set, got zero time")
 				}
 
-				// For zero lastRun, next should be after now
-				if tc.lastRun.IsZero() {
-					if next.Before(time.Now()) {
-						t.Errorf("expected next time to be after now for zero lastRun, got %v", next)
+				// Test runOnStart behavior when lastRun is zero
+				if tc.lastRun.IsZero() && tc.runOnStart {
+					// Should return time.Now() when runOnStart=true
+					if next.Before(before) || next.After(after.Add(time.Second)) {
+						t.Errorf("expected next time to be around now with runOnStart=true, got %v", next)
+					}
+				} else if tc.lastRun.IsZero() && !tc.runOnStart {
+					// Should calculate next cron time from now when runOnStart=false
+					if next.Before(before) {
+						t.Errorf("expected next time to be after now with runOnStart=false, got %v", next)
 					}
 				} else {
-					// For non-zero lastRun, next should be after lastRun
+					// For non-zero lastRun, should calculate next cron time after lastRun
 					if next.Before(tc.lastRun) {
 						t.Errorf("expected next time to be after lastRun (%v), got %v", tc.lastRun, next)
 					}
@@ -338,7 +379,7 @@ func TestCronTriggerNext(t *testing.T) {
 func TestCronTriggerNextError(t *testing.T) {
 	// Test error case by directly creating cronTrigger with invalid expression
 	// that bypasses the NewCronTrigger validation but fails in NextTickAfter()
-	trigger := &cronTrigger{expr: "invalid expression"}
+	trigger := &cronTrigger{expr: "invalid expression", runOnStart: false}
 
 	_, err := trigger.Next(time.Now())
 

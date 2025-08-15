@@ -45,15 +45,19 @@ func NewIntervalTrigger(interval time.Duration, runOnStart bool) (Trigger, error
 }
 
 type cronTrigger struct {
-	expr string
+	expr       string
+	runOnStart bool
 }
 
 func (t *cronTrigger) String() string {
-	return fmt.Sprintf("Cron(expr=%s)", t.expr)
+	return fmt.Sprintf("Cron(expr=%s, runOnStart=%v)", t.expr, t.runOnStart)
 }
 
 func (t *cronTrigger) Next(lastRun time.Time) (time.Time, error) {
 	if lastRun.IsZero() {
+		if t.runOnStart {
+			return time.Now(), nil
+		}
 		lastRun = time.Now()
 	}
 
@@ -64,9 +68,9 @@ func (t *cronTrigger) Next(lastRun time.Time) (time.Time, error) {
 	return next, nil
 }
 
-func NewCronTrigger(expr string) (Trigger, error) {
+func NewCronTrigger(expr string, runOnStart bool) (Trigger, error) {
 	if !gronx.IsValid(expr) {
 		return nil, errors.New("invalid cron expression")
 	}
-	return &cronTrigger{expr: expr}, nil
+	return &cronTrigger{expr: expr, runOnStart: runOnStart}, nil
 }
